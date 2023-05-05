@@ -54,6 +54,7 @@ func (s *Scheduler) StartDaemon() {
 		return
 	}
 	go s.daemon()
+	s.startedDaemon = true
 }
 
 func (s *Scheduler) Dispose() {
@@ -83,13 +84,12 @@ func (s *Scheduler) daemon() {
 		gpt.Status = OK
 		s.workableCh <- gpt
 		fmt.Println("[GPT SCHEDULER]", gpt.Identity, "-> OK")
-		s.statistic()
-
+		s.Statistic()
 	}
 
 }
 
-func (s *Scheduler) statistic() {
+func (s *Scheduler) Statistic() {
 	fmt.Println("[GPT STATISTICS]",
 		"Valid:", len(s.workableCh),
 		"Broken:", len(s.brokenCh),
@@ -115,6 +115,6 @@ func (s *Scheduler) GetClient() *Client {
 		fmt.Println("[GPT SCHEDULER]", gpt.Identity, "-> OOS")
 		s.outOfServiceCh <- gpt
 	}
-	s.statistic()
+	s.Statistic()
 	return s.GetClient()
 }
