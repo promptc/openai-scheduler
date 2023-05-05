@@ -30,14 +30,14 @@ func (s Status) String() string {
 }
 
 type Client struct {
-	Cli      *openai.Client
+	Raw      *openai.Client
 	Status   Status
 	Identity string
 }
 
 func New(token string) (g *Client) {
 	return &Client{
-		Cli:      openai.NewClient(token),
+		Raw:      openai.NewClient(token),
 		Status:   OK,
 		Identity: token,
 	}
@@ -45,7 +45,7 @@ func New(token string) (g *Client) {
 
 func NewWithIdentity(identity, token string) (g *Client) {
 	return &Client{
-		Cli:      openai.NewClient(token),
+		Raw:      openai.NewClient(token),
 		Status:   OK,
 		Identity: identity,
 	}
@@ -53,25 +53,25 @@ func NewWithIdentity(identity, token string) (g *Client) {
 
 func NewWithConfig(identity string, config openai.ClientConfig) (g *Client) {
 	return &Client{
-		Cli:      openai.NewClientWithConfig(config),
+		Raw:      openai.NewClientWithConfig(config),
 		Status:   OK,
 		Identity: identity,
 	}
 }
 
-func (g *Client) IsOk() bool {
-	return g.Status == OK
+func (c *Client) IsOk() bool {
+	return c.Status == OK
 }
 
-func (g *Client) IsBanned() bool {
-	return g.Status == Banned
+func (c *Client) IsBanned() bool {
+	return c.Status == Banned
 }
 
-func (g *Client) IsOutOfService() bool {
-	return g.Status == OutOfService
+func (c *Client) IsOutOfService() bool {
+	return c.Status == OutOfService
 }
 
-func (g *Client) StatusAdjust(e error) {
+func (c *Client) StatusAdjust(e error) {
 	if e == nil {
 		return
 	}
@@ -81,17 +81,17 @@ func (g *Client) StatusAdjust(e error) {
 	}
 	if strings.Contains(err, "status code: 429") {
 		if strings.Contains(err, "Your access was terminated due to violation of our policies") {
-			g.Status = Banned
+			c.Status = Banned
 		} else {
-			g.Status = OutOfService
+			c.Status = OutOfService
 		}
 	} else if strings.Contains(err, "status code: 403") {
-		g.Status = Banned
+		c.Status = Banned
 	} else if strings.Contains(err, "status code: 401") {
-		g.Status = Banned
+		c.Status = Banned
 	} else if strings.Contains(err, "status code: 503") {
-		g.Status = OutOfService
+		c.Status = OutOfService
 	} else {
-		g.Status = OutOfService
+		c.Status = OutOfService
 	}
 }
