@@ -9,13 +9,18 @@ type Scheduler struct {
 	workableCh     chan *Client
 	brokenCh       chan *Client
 	outOfServiceCh chan *Client
+	startedDaemon  bool
+	stopCh         chan bool
 }
 
-func Init(tokens []string) *Scheduler {
-	sche := &Scheduler{}
+func NewScheduler(tokens []string) *Scheduler {
+	sche := &Scheduler{
+		startedDaemon: false,
+		stopCh:        make(chan bool),
+	}
 	var gpts []*Client
 	for _, token := range tokens {
-		gpts = append(gpts, New(token))
+		gpts = append(gpts, NewClient(token))
 	}
 	if len(gpts) == 0 {
 		panic("no gpt3 token")
@@ -26,18 +31,62 @@ func Init(tokens []string) *Scheduler {
 	for _, gpt := range gpts {
 		sche.workableCh <- gpt
 	}
-	sche.statistic()
-	go sche.daemon()
+	//sche.statistic()
 	return sche
 }
 
+func NewSchedulerFromClients(clients []*Client) *Scheduler {
+	sche := &Scheduler{
+		startedDaemon: false,
+	}
+	sche.workableCh = make(chan *Client, len(clients))
+	sche.brokenCh = make(chan *Client, len(clients))
+	sche.outOfServiceCh = make(chan *Client, len(clients))
+	for _, gpt := range clients {
+		sche.workableCh <- gpt
+	}
+	//sche.statistic()
+	return sche
+}
+
+func (s *Scheduler) StartDaemon() {
+	if s.startedDaemon {
+		return
+	}
+	go s.daemon()
+}
+
+func (s *Scheduler) Dispose() {
+	if s.startedDaemon {
+		s.stopCh <- true
+	}
+	close(s.workableCh)
+	close(s.brokenCh)
+	close(s.outOfServiceCh)
+}
+
+func (s *Scheduler) DaemonStarted() bool {
+	return s.startedDaemon
+}
+
+func (s *Scheduler) GetWorkable() int {
+	return len(s.workableCh)
+}
+
 func (s *Scheduler) daemon() {
-	gpt := <-s.outOfServiceCh
-	time.Sleep(time.Minute)
-	gpt.Status = OK
-	s.workableCh <- gpt
-	fmt.Println("[GPT SCHEDULER]", gpt.Identity, "-> OK")
-	s.statistic()
+	select {
+	case <-s.stopCh:
+		return
+	default:
+		gpt := <-s.outOfServiceCh
+		time.Sleep(time.Minute)
+		gpt.Status = OK
+		s.workableCh <- gpt
+		fmt.Println("[GPT SCHEDULER]", gpt.Identity, "-> OK")
+		s.statistic()
+
+	}
+
 }
 
 func (s *Scheduler) statistic() {

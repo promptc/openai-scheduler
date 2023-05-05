@@ -35,7 +35,7 @@ type Client struct {
 	Identity string
 }
 
-func New(token string) (g *Client) {
+func NewClient(token string) (g *Client) {
 	return &Client{
 		Raw:      openai.NewClient(token),
 		Status:   OK,
@@ -43,7 +43,7 @@ func New(token string) (g *Client) {
 	}
 }
 
-func NewWithIdentity(identity, token string) (g *Client) {
+func NewClientWithIdentity(identity, token string) (g *Client) {
 	return &Client{
 		Raw:      openai.NewClient(token),
 		Status:   OK,
